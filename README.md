@@ -9,7 +9,7 @@ The focus of the project is on **model comparison** and **error distribution ana
 ---
 
 ## 📊 Dataset
-- Source: Provided as part of the course
+- Source: https://rdrr.io/cran/ISLR/man/College.html
 - Format: CSV
 - Description: See `data/data_description.txt`
 
