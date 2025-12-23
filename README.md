@@ -62,7 +62,6 @@ These metrics were selected to better capture **error distribution and robustnes
 ## 📁 Repository Structure
 - data/ → Dataset and data description
 - notebooks/ → R Markdown source and rendered HTML
-- results/ → Figures and performance summaries
 ---
 
 ## 📌 Notes
