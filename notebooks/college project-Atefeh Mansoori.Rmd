@@ -1,0 +1,2280 @@
+---
+title: "College project-Data science course code 18"
+author: "Atefeh Mansoori"
+date: "4/15/2021"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part 1: What is the assighnment
+1.	فهم مسئله
+1.1.	انگیزه اصلی پروژه چیست؟
+1.2.	خروجی چنین پروژه این برای چه مواردی ممکن است کاربرد داشته باشد؟
+1.3.	چه کسانی ممکن است به نتایج این پروژه علاقمند باشند؟چرا؟
+
+Based on a short discussion with a teacher in a private school in USA, I realized that the Master and PhD seats in universities are specified and limited. The policy about the college students are reverse though. More college applications could mean more students, and more students mean more income. Therefore one of the benefit of such prediction could be useful for college administrators for their budgeting plans. Also, there are things must be planned based on the number of students enrolling, including hiring full time or part time teachers. This is another point that estimating  the number of application could have.
+
+
+
+
+Try to predict the number of applications received
+  using the other variables in the
+  college.csv data set.
+
+ (a) Do a thorough exploratory analysis on data set
+ (b) Split the data set into a training set and a test set.
+ (c) Fit a linear model using least squares on the training set, and
+     report the test error obtained.
+     (c-1) select predictors based on t-test results
+     (c-2) select predictors based on step-wise method and k-fold cross validation
+ (d) Fit a ridge regression model on the training set, with ?? chosen
+     by cross-validation. Report the test error obtained.
+ (e) Fit a lasso model on the training set, with ?? chosen by cross-validation.
+     Report the test error obtained.
+ (f) Fit a regression tree to the training set. Report the test error obtained.
+ (g) Use the bagging approach in order to analyze this data. Report the test error obtained.
+ (h) Use random forests to analyze the data set. Report the test error obtained.
+ (j) Compare the test errors across the all models. Which one is better?
+
+# Part 2: Basic tasks
+```{r Required libraries}
+library("ggplot2")    #Create Elegant Data Visualizations 
+
+library("moments")    #Moments, skewness, kurtosis and related tests
+
+library("car")        #Required for Calculations Related to Regression
+
+library("corrplot")   #Visualization of Correlation Matrix
+
+
+library("MASS")     #Box-Cox Transformations for Linear Models
+
+library("leaps")    #Regression Subset Selection
+
+library("glmnet")         #Lasso and Elastic-Net Regularized GLM
+
+
+library("rpart")          #Classification and Regression Trees 
+
+library("rpart.plot")     #Plot Decision Tree
+
+library("randomForest")   #Random Forests for Classification and Regression 
+
+
+library("gbm")
+
+library("xgboost")
+```
+
+```{r Read data from file}
+set.seed(1234)
+getwd()
+setwd("F:/Atefe/data science course/projects-DS introductery/college")
+college_data1 <- read.csv("college.csv", header = T)
+```
+```{r }
+dim(college_data1)
+```
+# Part 3: Data inspection
+2.	درک داده
+2.1.	داده ها از کجا به دست آمده اند و چگونه جمع آوری شده اند؟
+2.2.	هر یک از متغیر ها چه چیزی را اندازه گیری می کنند؟
+2.3.	آیا ابهامی در تعریف داده ها وجود دارد؟
+2.4.	آیا ممکن است در اندازه گیری متغیر ها یا ثبت داده ها خطایی وجود داشته باشد؟
+2.5.	چه متغیر های دیگری اگر وجود داشت می توانست به حل مسئله کمک کند؟
+2.6.	متغیر های موجود از کدام نوعند؟ رسته ای یا عددی؟
+2.7.	خلاصه آماری متغیر های موجود چیست؟
+
+
+
+```{r variable introduction}
+#Variable introduction
+str(college_data1)
+
+# "X"           : name of college   
+#"Private"      : yes no
+#"Apps"         : Number of applications received
+#"Accept"       : Number of applications accepted
+#"Enroll"       : Number of new students enrolled
+#"Top10perc"    : Pct. new students from top 10% of High school class
+#"Top25perc"    : Pct. new students from top 25% of High school class
+#"F.Undergrad"  : Number of fulltime undergraduates
+#"P.Undergrad"  : Number of parttime undergraduates
+#"Outstate"     : Out-of-state tuition
+#"Room.Board"   : Room and board costs
+#"Books"        : Estimated book costs
+#"Personal"     : Estimated personal spending
+#"PhD"          : Pct. of faculty with Ph.D.'s
+#"Terminal"     : Pct. of faculty with terminal degree
+#"S.F.Ratio"    : Student/faculty ratio
+#"perc.alumni"  : Pct. alumni who donate
+#"Expend"       : Instructional expenditure per student
+#"Grad.Rate"    : Graduation rate
+summary(college_data1)
+
+```
+## About dataset and variables:
+This dataset was taken from the StatLib library which is maintained at Carnegie Mellon University. The dataset was used in the ASA Statistical Graphics Section's 1995 Data Analysis Exposition. 
+
+there is this link that explains the variables in more detail and makes it clearer.
+<https://rdrr.io/cran/ISLR/man/College.html>
+
+Fortunately there is no missing value in data. How ever there are a few errors in variable which are in percentage format and the maximum of them are more than 100%.
+
+Other variables that could help for a better prediction, in my opinion are:
+Number and amount of scholarships and funds.
+Minimum of some of the acceptance requirements like some entrance exam grades or language exam grades for intrenational students.
+Number or percentage of international students
+Information about religious or ethnicity population.
+
+
+### Prepration: Removing Data with errors
+```{r removing data with errors}
+#PhD and Grad.Rate are percentage and the max of them should not be more than 100
+#finding and removing them from data set
+sum(college_data1$Grad.Rate > 100)
+```
+```{r }
+sum(college_data1$PhD > 100)
+```
+```{r }
+which(college_data1$Grad.Rate > 100)
+college_data1[96,]
+```
+```{r }
+which(college_data1$PhD > 100)
+college_data1[583,]
+
+```
+
+```{r removing data with errors: checking}
+#removing data with errors and check if the errors are removed
+college_data1 <- college_data1[-c(96,583),]
+sum(college_data1$Grad.Rate > 100)
+sum(college_data1$PhD > 100)
+
+summary(college_data1)
+```
+max percentage of PhD and Grad.Rate are 100 now
+
+### Prepration:categorical variables
+```{r }
+#convert categorical variable to factor
+college_data1[,"Private"] <- lapply(college_data1[,"Private"], factor)
+```
+```{r }
+summary(college_data1)
+```
+```{r data prepration}
+#removing the college name and the private columns since they are all  one category and  "yes"
+college_data2 <- college_data1[,3:19]
+dim(college_data2)
+str(college_data2)
+```
+### Visual inspection
+#### Histogram of continuous variable
+```{r visualization: histogram}
+#continuous variable distribution (17 columns =17 variable)
+par(mar = c(2, 2, 2,2 ))
+par(mfrow = c(5,4)) # 5 rows and 4 columns
+for (i in 1:17){
+  hist(college_data2[,i], xlab = "", main =paste("Histogram of", names(college_data2)[i]))
+}
+par(mfrow = c(1,1))
+```
+#### Boxplot of Number of application and outlier detection
+```{r visualization: Boxplot}
+boxplot(college_data2$Apps, main = "Apps Dist.")
+```
+```{r }
+#Identifying outliers 
+set.seed(1234)
+college_tukey_ul <- quantile(college_data2$Apps, probs = 0.75) + 1.5 * IQR(college_data2$Apps)
+college_tukey_ul 
+sum(college_data2$Apps > college_tukey_ul) #number of outliers
+(sum(college_data2$Apps > college_tukey_ul)/nrow(college_data2)) * 100 #9% of total data
+```
+72 of data are calculated as outliers which is about 9 % of data
+
+#### Correlation analysis
+```{r Correlation analysis} 
+#Correlation Analysis
+college_cor_table <- round(cor(college_data2[,c(1:17)]), 2)
+college_cor_table
+corrplot(college_cor_table)
+```
+Correlation between Apps and Accept,Enroll, F.undergrad seems high
+Also correlation between Accept and Enroll, F.Undergrad seems high (should be careful about multicollinearity)
+                 
+#### Scatterplot analysis
+```{r Scatter plot of X vs Y analysis} 
+#Scatter plot
+par(mar = c(2, 2, 2,2 ))
+par(mfrow = c(4,4)) # 4 rows and 4 columns
+for (i in 2:17){
+  plot(college_data2[,i], college_data2$Apps, xlab ="", 
+       main = paste("Application vs.", names(college_data2)[i]))
+}
+par(mfrow = c(1,1))
+```
+Good linear relation could be seen between Apps and Accept, Enroll, F.Undergrad.
+The relation between Apps and other variables is not visually clear so lets see what our models will tell us.
+
+### Dividing data into train and test
+```{r dividiing data}
+#Divide dataset into Train and test
+set.seed(1234)
+college_train_cases <- sample(1:nrow(college_data2), nrow(college_data2) * 0.6)
+college_train <- college_data2[college_train_cases,]
+college_test <- college_data2[-college_train_cases,]
+
+```
+```{r }
+#comparing  data distribution in train and test as well as the dimention
+dim(college_train)
+summary(college_train)
+dim(college_test)
+summary(college_test)
+```
+### Inspecting data in train and test dataset
+```{r train & test inspection1}
+
+#box plot nd Scatter plot of train data set to assess outliers in train data set
+boxplot(college_train$Apps, main = "Apps Dist.in train data")
+par(mar = c(2, 2, 2,2 ))
+par(mfrow = c(4,5)) # 4 rows and 4 columns
+for (i in 2:17){
+  plot(college_train[,i], college_train$Apps, xlab ="", 
+       main = paste("Application vs.", names(college_train)[i]))
+}
+par(mfrow = c(1,1))
+```
+The distribution of train dataset looks like the main data set
+```{r train & test inspection}
+#removing outliers in train data set  outliers
+sum(college_train$Apps > college_tukey_ul)
+trimmed_college_train <- college_train[-which(college_train$Apps > college_tukey_ul),]
+dim(trimmed_college_train)   
+summary(trimmed_college_train)
+
+```
+```{r }
+#Scatter plot of trimmed_train data set to assess outliers in trimmed_train data set
+par(mar = c(2, 2, 2,2 ))
+par(mfrow = c(4,4)) # 4 rows and 4 columns
+for (i in 2:17){
+  plot(trimmed_college_train[,i], trimmed_college_train$Apps, xlab ="", 
+       main = paste("Application vs.", names(trimmed_college_train)[i]))
+}
+par(mfrow = c(1,1))
+```
+Now, there is a better vision of the data distribution after removing outliers.
+It seems that except a few variables there is not  linear relation between Apps and variables.
+But again, we want to get good result in predicting "Apps", so lets start modeling.
+
+# Part 4: Building prediction models
+### Model1_1(lm): Traditional regression model
+```{r Model1_1(lm)}
+##Model1_1(lm) : Traditional Linear Regression
+set.seed(1234)
+college_lm_1 <- lm(Apps ~ ., data = college_train)
+summary(college_lm_1)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_1$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_1$residuals), col = "red")
+#QQ-plot
+qqnorm(college_lm_1$residuals, main = "QQ Plot of residuals", pch = 20)
+qqline(college_lm_1$residuals, col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_1$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_1$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+#Diagnostic Plots
+plot(college_lm_1)
+ # pattern in R vs. Y^
+ # Hetroscedasticity
+ # outliers
+```
+```{r }
+#Check multicollinearity
+car :: vif(college_lm_1)
+# multicollinearity in Enroll, F.Undergrad
+
+# Model1_1 conclusion: 
+#  1- violation of regression assumption
+#  2- pattern in R vs. Y^
+#  3- Hetroscedasticity
+#  4- outliers
+#  5- multicollinearity in Enroll, F.Undergrad
+```
+### Model1_2(lm): Traditional Linear Regression removing insignificant variables
+```{r Model1_2(lm)}
+set.seed(1234)
+college_lm_2 <- lm(Apps ~ Accept + Enroll + Top10perc  +Top25perc +P.Undergrad
+                      + Room.Board + Outstate + Expend + Grad.Rate,       
+                   data = college_train)
+summary(college_lm_2)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_2$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_2$residuals), col = "red")
+#QQ-plot
+qqnorm(college_lm_2$residuals, main = "QQ Plot of residuals", pch = 20)
+qqline(college_lm_2$residuals, col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_2$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_2$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+#Diagnostic Plots
+plot(college_lm_2)
+```
+```{r }
+#Check multicollinearity
+car :: vif(college_lm_1)
+car :: vif(college_lm_2)
+#Model1_2 Conclusion: 
+# 1- not normal residuals 
+# 2- pattern in R vs. Y^
+# 3- Hetroscedasticity
+# 4-  Outliers
+# 5- multicollinearity is solved
+```
+### Model1_3(lm): Traditional Linear Regression with trimmed data
+```{r Moled1_3(lm)}
+set.seed(1234)
+college_lm_3 <- lm(Apps ~ ., data = trimmed_college_train)
+summary(college_lm_3)      
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_3$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_3$residuals), col = "red")
+#QQ-plot
+qqnorm(college_lm_3$residuals, main = "QQ Plot of residuals", pch = 20)
+qqline(college_lm_3$residuals, col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_3$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_3$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+#Diagnostic Plots
+plot(college_lm_3)
+```
+```{r }
+#Check multicollinearity
+car :: vif(college_lm_1)
+car :: vif(college_lm_2)
+car :: vif(college_lm_3)
+
+#Molde1_3(lm) conclusion:
+# not normal residuals
+# Heteroscedasticity is still remained
+# pattern in R vs. Y^ got better *
+# out liers problem has been solved *
+# multicolliniarity is still remained
+```
+### Model1_4(lm): Traditional Linear Regression trimmed and removing insignificant variables
+```{r Model1_4(lm)}
+college_lm_4 <- lm(Apps ~ Accept + Enroll + Top10perc  +
+                     F.Undergrad  + P.Undergrad + Outstate + Personal + S.F.Ratio + Expend ,       
+                   data = trimmed_college_train)
+summary(college_lm_4)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_4$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_4$residuals), col = "red")
+#QQ-plot
+qqnorm(college_lm_4$residuals, main = "QQ Plot of residuals", pch = 20)
+qqline(college_lm_4$residuals, col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_4$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_4$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+#Diagnostic Plots
+plot(college_lm_4)
+
+#Check multicollinearity
+car :: vif(college_lm_4)
+#Molde1_4(lm) conclusion:
+# not normal residuals
+# Heteroscedasticity is still remained
+# pattern in R vs. Y^ got better *
+# out liers problem has been solved *
+# multicoliniarity is still remained
+```
+##  Test model1
+```{r test Moled1_1}
+#Model1_1: Test the Model----------------------------------
+#Model1_1: college_lm_1
+#Prediction
+college_pred_lm_1 <- predict(college_lm_1, college_test)
+
+#Model1_1: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_1 <- abs(college_pred_lm_1 - college_test$Apps)
+mean(college_abs_err_lm_1)
+median(college_abs_err_lm_1)
+sd(college_abs_err_lm_1)
+range(college_abs_err_lm_1)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_1, breaks = 15)
+boxplot(college_abs_err_lm_1)
+
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_1, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_1")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+
+```{r test Moled1_2}
+#Model1_2: Test the Model----------------------------------
+#Model1_2: college_lm_2
+#Prediction
+college_pred_lm_2 <- predict(college_lm_2, college_test)
+
+#Model1_2: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_2 <- abs(college_pred_lm_2 - college_test$Apps)
+mean(college_abs_err_lm_2)
+median(college_abs_err_lm_2)
+sd(college_abs_err_lm_2)
+range(college_abs_err_lm_2)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_2, breaks = 15)
+boxplot(college_abs_err_lm_2)
+
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_2, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_2")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+
+```{r test Moled1_3}
+#Model1_3: Test the Model----------------------------------
+#Model1_3: college_lm_3
+#Prediction
+college_pred_lm_3 <- predict(college_lm_3, college_test)
+
+#Model1_3: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_3 <- abs(college_pred_lm_3 - college_test$Apps)
+mean(college_abs_err_lm_3)
+median(college_abs_err_lm_3)
+sd(college_abs_err_lm_3)
+range(college_abs_err_lm_3)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_3, breaks = 15)
+boxplot(college_abs_err_lm_3)
+
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_3, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_3")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r test Moled1_4}
+
+#Model1_4: Test the Model----------------------------------
+#Model1_4: college_lm_4
+#Prediction
+college_pred_lm_4 <- predict(college_lm_4, college_test)
+
+#Model1_4: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_4 <- abs(college_pred_lm_4 - college_test$Apps)
+mean(college_abs_err_lm_4)
+median(college_abs_err_lm_4)
+sd(college_abs_err_lm_4)
+range(college_abs_err_lm_4)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_4, breaks = 15)
+boxplot(college_abs_err_lm_4)
+
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_4, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_4")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+## Model comparison
+```{r test Moled1: 1 to 4 comparison}
+
+#Model comparison 1 -----
+college_df <- data.frame("Model1_1" = college_abs_err_lm_1, 
+                         "Model1_2" = college_abs_err_lm_2, 
+                         "Model1_3" = college_abs_err_lm_3, 
+                         "Model1_4" = college_abs_err_lm_4)
+
+
+college_models_comp <- data.frame("Mean of AbsErrors"   = apply(college_df, 2, mean),
+                                  "Median of AbsErrors" = apply(college_df, 2, median),
+                                  "SD of AbsErrors"  = apply(college_df, 2, sd),
+                                  "IQR of AbsErrors" = apply(college_df, 2, IQR),
+                                  "Min of AbsErrors" = apply(college_df, 2, min),
+                                  "Max of AbsErrors" = apply(college_df, 2, max))
+
+rownames(college_models_comp) <- c("lm_1", "lm_2","lm_3","lm_4")                        
+college_models_comp
+# note: apperentlly trimming  data reduces the mean and median of abs errors but it must be noted that it is train dataset and it increase the maximum of abs errors
+
+```
+As the model comparison table shows, models with trimmed data have lower mean of absolute errors but higher SD and max of abs errors which is not good.
+
+Despite of violation of regression assumption which makes the T and F test result unacceptable, we keep moving  making models  with this data set, since we are looking for good prediction result and our case is not interpretation.
+However, I make changes in the data set to minimize the violation of assumption and get better results.
+That is transforming data, using boxcox transformation in order to make the error distribution closer to normal
+
+## Boxcox transformation
+```{r BoxCox Transformation}
+##Model2 : Box-Cox Transformation to solve normality issue of residuals
+#Box-Cox Transformation- finding lambda
+set.seed(1234)
+college_box_results <- boxcox(Apps ~ ., data = college_train, lambda = seq(-5, 5, 0.1)) 
+```
+```{r }
+college_box_results <- data.frame(college_box_results$x, college_box_results$y)# Create a data frame with the results
+#college_box_results
+```
+```{r }
+college_lambda <- college_box_results[which(college_box_results$college_box_results.y == max(college_box_results$college_box_results.y)), 1]
+college_lambda #lambda = 0.5
+```
+
+
+```{r BOXCOX Function}
+#usign  a function for transforming data
+#lambda here is equal to college_lambda
+
+#Boxcox transform function 
+BCTransform <- function(y, lambda=0) {
+  if (lambda == 0L) { log(y) }
+  else { (y^lambda - 1) / lambda }
+}
+
+#Ieverse boxcox transform function 
+BCTransformInverse <- function(yt, lambda=0) {
+  if (lambda == 0L) { exp(yt) }
+  else { exp(log(1 + lambda * yt)/lambda) }
+}
+```
+```{r }
+#checking the functions performance
+college_train$BoxCox_Apps <- BCTransform(college_train$Apps, college_lambda)
+boxcoxbacktrans <- BCTransformInverse(college_train$BoxCox_Apps, college_lambda) 
+summary(boxcoxbacktrans)
+summary(college_train$Apps)
+mean(boxcoxbacktrans - college_train$Apps) 
+#the dstribution of the Apps and backtransform of the boxcox are the same so the functions are working correctly
+```
+## Building model 2 
+```{r Model2_1}
+#Model2_1: Box_Cox transformation with lambda = 0.5 all variables-----
+set.seed(1234)
+college_lm_boxcox_1 <- lm(BoxCox_Apps ~ . - Apps, data = college_train)
+summary(college_lm_boxcox_1)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_boxcox_1$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_boxcox_1$residuals), col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_boxcox_1$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_boxcox_1$residuals)
+#Note: Tests are saying that Residuals are not Normally Distributed!
+```
+```{r }
+plot(college_lm_boxcox_1)
+car :: vif(college_lm_boxcox_1)
+#but the graphs show a little improvement in the situation.
+#therefore we keep building models with transformed data
+```
+
+```{r Model2_2}
+
+#Model2_2: Box_Cox transformation with lambda = 0.5 significant variables-----
+set.seed(1234)
+college_lm_boxcox_2 <- lm(BoxCox_Apps ~ Accept  + Top10perc +Top25perc + Outstate + Room.Board+
+                             Books + Personal+ PhD + S.F.Ratio + perc.alumni + 
+                             Expend + Grad.Rate, data = college_train)
+summary(college_lm_boxcox_2)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_boxcox_2$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_boxcox_2$residuals), col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_boxcox_2$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_boxcox_2$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+plot(college_lm_boxcox_2)
+car :: vif(college_lm_boxcox_2)
+```
+
+```{r Model2_3}
+#Model2_3: Box_Cox transformation with lambda = 0.5 trimmed data-----
+trimmed_college_train$BoxCox_Apps <- BCTransform(trimmed_college_train$Apps, college_lambda)
+set.seed(1234)
+college_lm_boxcox_3 <- lm(BoxCox_Apps ~ . -Apps, data = trimmed_college_train)
+summary(college_lm_boxcox_3)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_boxcox_3$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_boxcox_3$residuals), col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_boxcox_3$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_boxcox_3$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+plot(college_lm_boxcox_3)
+car :: vif(college_lm_boxcox_3)
+
+#conclusions model2_3:
+# improved normality of residualds
+# less unlinearity in R vs. Y^
+# multicoliearity problem still remained
+```
+It seems that removing outliers improves the Hetroscedasticity problem but the mean of errors is not 0.
+```{r Model2_4}
+
+#Model2_4: Box_Cox transformation with lambda = 0.5 trimmed data and significant variable-----
+set.seed(1234)
+college_lm_boxcox_4 <- lm(BoxCox_Apps ~ Accept+ Enroll  + Top10perc + P.Undergrad+ 
+                            Outstate  + Books + S.F.Ratio  + Expend + Grad.Rate , data = trimmed_college_train)
+summary(college_lm_boxcox_4)
+```
+```{r }
+#Check Assumptions of Regression
+#Normality of residuals
+hist(college_lm_boxcox_4$residuals, probability = TRUE, breaks = 25)
+lines(density(college_lm_boxcox_4$residuals), col = "red")
+
+#Test for Skewness and Kurtosis
+#Good for sample size > 25
+#Jarque-Bera Test (Skewness = 0 ?)
+#p-value < 0.05 reject normality assumption
+jarque.test(college_lm_boxcox_4$residuals)
+
+#Anscombe-Glynn Test (Kurtosis = 3 ?)
+#p-value < 0.05 reject normality assumption
+anscombe.test(college_lm_boxcox_4$residuals)
+#Note: Residuals are not Normally Distributed!
+```
+```{r }
+plot(college_lm_boxcox_4)
+car :: vif(college_lm_boxcox_4)
+
+#conclusions of model2_4
+# improved normality of residulas
+# improved heteroscedasticity problem
+# improved linearity of R vs. Y^
+# no multicolinearity
+```
+## Testing model 2
+``` {r Model2_1: test}
+#Model2_1: Test the model-----
+#Model2_1: college_lm_boxcox_1
+#Prediction
+college_pred_lm_boxcox_1 <- predict(college_lm_boxcox_1, college_test)
+college_pred_lm_boxcox_1 <- BCTransformInverse(college_pred_lm_boxcox_1, college_lambda)
+#Model2_1: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_boxcox_1 <- abs(college_pred_lm_boxcox_1 - college_test$Apps)
+mean(college_abs_err_lm_boxcox_1)
+median(college_abs_err_lm_boxcox_1)
+sd(college_abs_err_lm_boxcox_1)
+range(college_abs_err_lm_boxcox_1)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_boxcox_1, breaks = 15)
+boxplot(college_abs_err_lm_boxcox_1)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_boxcox_1, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_boxcox_1")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, BoxCox_1 = c(mean(college_abs_err_lm_boxcox_1),
+                                                               median(college_abs_err_lm_boxcox_1),
+                                                               sd(college_abs_err_lm_boxcox_1),
+                                                               IQR(college_abs_err_lm_boxcox_1),
+                                                               range(college_abs_err_lm_boxcox_1)) )
+college_models_comp
+```
+
+``` {r Model2_2: test}
+#Model2_2: Test the model-----
+#Model2_2_: college_lm_boxcox_2
+#Prediction
+college_pred_lm_boxcox_2 <- predict(college_lm_boxcox_2, college_test)
+college_pred_lm_boxcox_2 <- BCTransformInverse(college_pred_lm_boxcox_2, college_lambda)
+#Model2_2: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_boxcox_2 <- abs(college_pred_lm_boxcox_2 - college_test$Apps)
+mean(college_abs_err_lm_boxcox_2)
+median(college_abs_err_lm_boxcox_2)
+sd(college_abs_err_lm_boxcox_2)
+range(college_abs_err_lm_boxcox_2)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_boxcox_2, breaks = 15)
+boxplot(college_abs_err_lm_boxcox_2)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_boxcox_2, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_boxcox_2")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, BoxCox_2 = c(mean(college_abs_err_lm_boxcox_2),
+                                                               median(college_abs_err_lm_boxcox_2),
+                                                               sd(college_abs_err_lm_boxcox_2),
+                                                               IQR(college_abs_err_lm_boxcox_2),
+                                                               range(college_abs_err_lm_boxcox_2)) )
+college_models_comp
+
+```
+
+``` {r Model2_3: test}
+#Model2_3: Test the model-----
+#Model2_3_: college_lm_boxcox_3
+#Prediction
+college_pred_lm_boxcox_3 <- predict(college_lm_boxcox_3, college_test)
+college_pred_lm_boxcox_3 <- BCTransformInverse(college_pred_lm_boxcox_3, college_lambda)
+#Model2_3: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_boxcox_3 <- abs(college_pred_lm_boxcox_3 - college_test$Apps)
+mean(college_abs_err_lm_boxcox_3)
+median(college_abs_err_lm_boxcox_3)
+sd(college_abs_err_lm_boxcox_3)
+range(college_abs_err_lm_boxcox_3)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_boxcox_3, breaks = 15)
+boxplot(college_abs_err_lm_boxcox_3)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_boxcox_3, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_boxcox_3")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, BoxCox_3 = c(mean(college_abs_err_lm_boxcox_3),
+                                                               median(college_abs_err_lm_boxcox_3),
+                                                               sd(college_abs_err_lm_boxcox_3),
+                                                               IQR(college_abs_err_lm_boxcox_3),
+                                                               range(college_abs_err_lm_boxcox_3)) )
+college_models_comp
+
+```
+
+``` {r Model2_4: test}
+#Model2_4: Test the model-----
+#Model2_4_: college_lm_boxcox_4
+#Prediction
+college_pred_lm_boxcox_4 <- predict(college_lm_boxcox_4, college_test)
+college_pred_lm_boxcox_4 <- BCTransformInverse(college_pred_lm_boxcox_4, college_lambda)
+#Model2_4: Absolute error mean, median, sd, max, min-------
+college_abs_err_lm_boxcox_4 <- abs(college_pred_lm_boxcox_4 - college_test$Apps)
+mean(college_abs_err_lm_boxcox_4)
+median(college_abs_err_lm_boxcox_4)
+sd(college_abs_err_lm_boxcox_4)
+range(college_abs_err_lm_boxcox_4)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_lm_boxcox_4, breaks = 15)
+boxplot(college_abs_err_lm_boxcox_4)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lm_boxcox_4, xlab = "Actual", ylab = "Prediction", main = "college_pred_lm_boxcox_4")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, BoxCox_4 = c(mean(college_abs_err_lm_boxcox_4),
+                                                               median(college_abs_err_lm_boxcox_4),
+                                                               sd(college_abs_err_lm_boxcox_4),
+                                                               IQR(college_abs_err_lm_boxcox_4),
+                                                               range(college_abs_err_lm_boxcox_4)) )
+college_models_comp
+#conclusions on model 4 BoxCox transformation improves the regression assumpsions 
+#trimming data increse the variance and mean  of the errors
+#so we keep buildign models with not trimmed but transformed data
+```
+Note: comparison table shows that trimmed data increase the mean and the max of abs errors.
+
+## Building model 3_1 to 3_3
+``` {r Model 3}
+##Model3: Using the Best Subset Selection Methods----------
+#Best Subset Selection
+set.seed(1234)
+college_bestsub_1 <- regsubsets(BoxCox_Apps ~ . - Apps, nvmax = 16, data = college_train, method = "exhaustive")
+summary(college_bestsub_1)
+```
+```{r }
+#Model Selection
+#R-squared
+summary(college_bestsub_1)$rsq
+```
+```{r Model 3_1 rsq}
+
+#Adjusted R-squared
+#AdjR2 = 1 - [(1 - R2)(1 - n)/(n - d - 1)]
+# n: the number of samples 
+# d: the number of predictors
+
+#Plot Adjusted R-squared
+plot(summary(college_bestsub_1)$adjr2,
+     type = "b",
+     xlab = "# of Variables", 
+     ylab = "AdjR2", 
+     xaxt = 'n',
+     xlim = c(1, 16)); grid()
+axis(1, at = 1:16, labels = 1:16)
+
+points(which.max(summary(college_bestsub_1)$adjr2), 
+       summary(college_bestsub_1)$adjr2[which.max(summary(college_bestsub_1)$adjr2)],
+       col = "red", cex = 2, pch = 20)
+best_adjr2 = which.max(summary(college_bestsub_1)$adjr2) #adjr2 = 15
+best_adjr2
+```
+```{r model3_2 CP}
+
+#Cp
+#Cp = 1/n * (RSS + 2 * d * sigma_hat ^ 2)
+# n: the number of samples 
+# RSS: Residual Sum of Squares
+# d: the number of predictors
+# sigma_hat: estimate of the variance of the error (estimated on a model containing all predictors) 
+
+#Plot Cp
+plot(summary(college_bestsub_1)$cp,
+     type = "b",
+     xlab = "# of Variables", 
+     ylab = "Cp", 
+     xaxt = 'n',
+     xlim = c(1, 16)); grid()
+axis(1, at = 1:16, labels = 1:16)
+
+points(which.min(summary(college_bestsub_1)$cp), 
+       summary(college_bestsub_1)$cp[which.min(summary(college_bestsub_1)$cp)],
+       col = "red", cex = 2, pch = 20)
+best_cp = which.min(summary(college_bestsub_1)$cp) #cp = 14
+best_cp
+```
+```{r model 3_3 BIC}
+#BIC
+#BIC (Bayesian Information Criterion ) =  -2 * LogLikelihood  + log(n) * d
+# n: the number of samples 
+# RSS: Residual Sum of Squares
+# d: the number of predictors
+# sigma_hat: estimate of the variance of the error 
+
+#Plot BIC
+plot(summary(college_bestsub_1)$bic,
+     type = "b",
+     xlab = "# of Variables", 
+     ylab = "BIC", 
+     xaxt = 'n',
+     xlim = c(1, 16)); grid()
+axis(1, at = 1:16, labels = 1:16)
+
+points(which.min(summary(college_bestsub_1)$bic), 
+       summary(college_bestsub_1)$bic[which.min(summary(college_bestsub_1)$bic)],
+       col = "red", cex = 2, pch = 20)
+best_bic = which.min(summary(college_bestsub_1)$bic) #BIC = 9
+best_bic
+```
+
+``` {r Model 3_1}
+
+#Model3_1: Bestsub-adjr2 =12-------------
+#Coefficients of the model based on the adjr2 index
+set.seed(1234)
+coef(college_bestsub_1, best_adjr2) #Model w/ 15 variables
+
+```
+```{r }
+set.seed(1234)
+college_bestsub_adjr2_3_1 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc + 
+                             P.Undergrad + Outstate + Room.Board + Books+ Personal  + PhD +
+                             Terminal + S.F.Ratio  +  perc.alumni +
+                             Expend + Grad.Rate , data = college_train)
+summary(college_bestsub_adjr2_3_1)
+```
+```{r }
+plot(college_bestsub_adjr2_3_1)
+```
+``` {r Model 3_2}
+#Model3_2: Bestsub-CP =12-------------
+#Coefficients of the model based on the CP index
+coef(college_bestsub_1, best_cp) #Model w/ 14 variables
+```
+```{r model3_2}
+
+college_bestsub_CP_3_2 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc + Top25perc+ 
+                                  P.Undergrad  + Outstate + Room.Board +Books +Personal + PhD
+                                + S.F.Ratio  +  perc.alumni +
+                                  Expend + Grad.Rate , data = college_train)
+summary(college_bestsub_CP_3_2)
+```
+```{r }
+plot(college_bestsub_CP_3_2)
+```
+
+``` {r Model 3_3}
+
+#Model3_3: Bestsub-BIC =6-------------
+#Coefficients of the model based on the BIC index
+coef(college_bestsub_1, best_bic) #Model w/ 9 variables
+
+```
+```{r }
+set.seed(1234)
+college_bestsub_BIC_3_3 <- lm(BoxCox_Apps ~ Accept  + Top10perc + 
+                               F.Undergrad  + Books+ PhD + S.F.Ratio + perc.alumni +
+                               Expend + Grad.Rate , data = college_train)
+summary(college_bestsub_BIC_3_3)
+```
+```{r }
+plot(college_bestsub_BIC_3_3)
+```
+
+
+## Testing model 3_1 to 3_3
+``` {r Model3_1: test}
+
+#Model3_1: Test the Model----------------------------------
+#Model3_1: college_bestsub_adjr2_3_1
+#Prediction
+college_pred_bestsub_adjr2_3_1  <- predict(college_bestsub_adjr2_3_1, college_test)
+college_pred_bestsub_adjr2_3_1  <- BCTransformInverse(college_pred_bestsub_adjr2_3_1, college_lambda)
+
+
+#Model3_1: Absolute error mean, median, sd, max, min-------
+college_abs_err_bestsub_adjr2_3_1 <- abs(college_pred_bestsub_adjr2_3_1 - college_test$Apps)
+mean(college_abs_err_bestsub_adjr2_3_1)
+median(college_abs_err_bestsub_adjr2_3_1)
+sd(college_abs_err_bestsub_adjr2_3_1)
+range(college_abs_err_bestsub_adjr2_3_1)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_bestsub_adjr2_3_1, breaks = 15)
+boxplot(college_abs_err_bestsub_adjr2_3_1)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bestsub_adjr2_3_1, xlab = "Actual", ylab = "Prediction", main = "college_pred_bestsub_adjr2_3_1")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r model3_1}
+college_models_comp <- rbind(college_models_comp, Bestsub_adjr2_1 = c(mean(college_abs_err_bestsub_adjr2_3_1),
+                                                               median(college_abs_err_bestsub_adjr2_3_1),
+                                                               sd(college_abs_err_bestsub_adjr2_3_1),
+                                                               IQR(college_abs_err_bestsub_adjr2_3_1),
+                                                               range(college_abs_err_bestsub_adjr2_3_1)) )
+college_models_comp
+```
+
+``` {r Model3_2: test}
+
+#Model3_2: Test the Model----------------------------------
+#Model3_2: college_bestsub_CP_3_2
+#Prediction
+college_pred_bestsub_CP_3_2  <- predict(college_bestsub_CP_3_2, college_test)
+college_pred_bestsub_CP_3_2  <- BCTransformInverse(college_pred_bestsub_CP_3_2, college_lambda)
+
+
+#Model3_2: Absolute error mean, median, sd, max, min-------
+college_abs_err_bestsub_CP_3_2 <- abs(college_pred_bestsub_CP_3_2 - college_test$Apps)
+mean(college_abs_err_bestsub_CP_3_2)
+median(college_abs_err_bestsub_CP_3_2)
+sd(college_abs_err_bestsub_CP_3_2)
+range(college_abs_err_bestsub_CP_3_2)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_bestsub_CP_3_2, breaks = 15)
+boxplot(college_abs_err_bestsub_CP_3_2)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bestsub_CP_3_2, xlab = "Actual", ylab = "Prediction", main ="college_pred_bestsub_CP_3_2")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, Bestsub_CP_2 = c(mean(college_abs_err_bestsub_CP_3_2),
+                                                                      median(college_abs_err_bestsub_CP_3_2),
+                                                                      sd(college_abs_err_bestsub_CP_3_2),
+                                                                      IQR(college_abs_err_bestsub_CP_3_2),
+                                                                      range(college_abs_err_bestsub_CP_3_2)) )
+college_models_comp
+```
+
+``` {r Model3_3: test}
+
+#Model3_3: Test the Model----------------------------------
+#Model3_3: college_bestsub_BIC_3_3
+#Prediction
+college_pred_bestsub_BIC_3_3  <- predict(college_bestsub_BIC_3_3, college_test)
+
+college_pred_bestsub_BIC_3_3  <- BCTransformInverse(college_pred_bestsub_BIC_3_3, college_lambda)
+
+
+#Model3_3: Absolute error mean, median, sd, max, min-------
+college_abs_err_bestsub_BIC_3_3 <- abs(college_pred_bestsub_BIC_3_3 - college_test$Apps)
+mean(college_abs_err_bestsub_BIC_3_3)
+median(college_abs_err_bestsub_BIC_3_3)
+sd(college_abs_err_bestsub_BIC_3_3)
+range(college_abs_err_bestsub_BIC_3_3)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_bestsub_BIC_3_3, breaks = 15)
+boxplot(college_abs_err_bestsub_BIC_3_3)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bestsub_BIC_3_3, xlab = "Actual", ylab = "Prediction")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, Bestsub_BIC_3 = c(mean(college_abs_err_bestsub_BIC_3_3),
+                                                                   median(college_abs_err_bestsub_BIC_3_3),
+                                                                   sd(college_abs_err_bestsub_BIC_3_3),
+                                                                   IQR(college_abs_err_bestsub_BIC_3_3),
+                                                                   range(college_abs_err_bestsub_BIC_3_3)) )
+college_models_comp
+```
+## Building model 3_4 to 3_6
+```{r model3_4}
+#Model 3_4 & 3_5 & 3_6: Stpwise - forward method---------
+#Forward Selection
+#Algorithm:
+# 1- Let M0 denote the null model , which contains no predictors. 
+# 2- For k = 0, 2,...p - 1:
+# (a) Consider all p ??? k models that augment the predictors in Mk 
+#       with one additional predictor.
+# (b) Pick the best among these models, and call it Mk+1.
+#       The best is defined as having the largest R-squared.
+#3- Select a single best model from among M0, ..., Mp
+#   using cross-validated prediction error, Cp, BIC, or adjusted R
+set.seed(1234)
+college_fwd_1 <- regsubsets(BoxCox_Apps ~ . - Apps, nvmax = 16, data = college_train, method = "forward")
+
+summary(college_fwd_1)
+```
+```{r model 3_4 to 3_6}
+best_adjr2 = which.max(summary(college_fwd_1)$adjr2) #adjr2 = 16
+best_cp = which.min(summary(college_fwd_1)$cp)    #CP = 14
+best_bic = which.min(summary(college_fwd_1)$bic)   #BIC = 9
+best_adjr2
+best_cp
+best_bic
+
+```
+```{r }
+#Model3_4: fwd stepwise adjr2 = 16 ------
+coef(college_fwd_1, best_adjr2) #Model w/ 16 variables
+
+set.seed(1234)
+college_fwd_adjr2_3_4 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc + Top25perc + F.Undergrad +
+                                  P.Undergrad + Outstate + Room.Board + Books + Personal + PhD +                                        Terminal 
+                                + S.F.Ratio  +  perc.alumni +
+                                  Expend + Grad.Rate , data = college_train)
+summary(college_fwd_adjr2_3_4)
+```
+
+```{r }
+#Model3_5: fwd stepwise CP = 14------
+coef(college_fwd_1, best_cp) #Model w/ 14 variables
+```
+``` {r }
+set.seed(1234)
+college_fwd_CP_3_5 <- lm(BoxCox_Apps ~ Accept  + Top10perc +Top25perc + F.Undergrad + P.Undergrad
+                             +Outstate + Room.Board + Books + Personal  + PhD
+                            + S.F.Ratio  +  perc.alumni +
+                              Expend + Grad.Rate , data = college_train)
+summary(college_fwd_CP_3_5)
+```
+
+```{r model3_6}
+#Model3_6: fwd stepwise BIC = 9 ------
+coef(college_fwd_1, best_bic) #Model w/ 9 variables
+```
+```{r }
+set.seed(1234)
+college_fwd_BIC_3_6 <- lm(BoxCox_Apps ~ Accept  + Top10perc + F.Undergrad +Books +
+                               
+                        PhD + S.F.Ratio + perc.alumni + Expend + Grad.Rate , data = college_train)
+summary(college_fwd_BIC_3_6)
+```
+
+
+## Testing model 3_4 to 3_6
+```{r model3_4: test}
+#Model3_4: Test the Model-----
+college_pred_fwd_adjr2_3_4  <- predict(college_fwd_adjr2_3_4, college_test)
+college_pred_fwd_adjr2_3_4  <- BCTransformInverse(college_pred_fwd_adjr2_3_4, college_lambda)
+#Model3_4: Absolute error mean, median, sd, max, min----
+college_abs_err_fwd_adjr2_3_4 <- abs(college_pred_fwd_adjr2_3_4 - college_test$Apps)
+mean(college_abs_err_fwd_adjr2_3_4)
+median(college_abs_err_fwd_adjr2_3_4)
+sd(college_abs_err_fwd_adjr2_3_4)
+range(college_abs_err_fwd_adjr2_3_4)
+```
+```{r }
+
+#histogram and boxplot
+hist(college_abs_err_fwd_adjr2_3_4, breaks = 15)
+boxplot(college_abs_err_fwd_adjr2_3_4)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_fwd_adjr2_3_4, xlab = "Actual", ylab = "Prediction", main = "college_pred_fwd_adjr2_3_4")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, fwd_adjr2_4 = c(mean(college_abs_err_fwd_adjr2_3_4),
+                                                                      median(college_abs_err_fwd_adjr2_3_4),
+                                                                      sd(college_abs_err_fwd_adjr2_3_4),
+                                                                      IQR(college_abs_err_fwd_adjr2_3_4),
+                                                                      range(college_abs_err_fwd_adjr2_3_4)) )
+college_models_comp
+```
+
+```{r model3_5: test}
+#Model3_5: Test the Model-----
+college_pred_fwd_CP_3_5  <- predict(college_fwd_CP_3_5, college_test)
+college_pred_fwd_CP_3_5  <- BCTransformInverse(college_pred_fwd_CP_3_5, college_lambda)
+#Model3_5: Absolute error mean, median, sd, max, min-----
+college_abs_err_fwd_CP_3_5 <- abs(college_pred_fwd_CP_3_5 - college_test$Apps)
+mean(college_abs_err_fwd_CP_3_5)
+median(college_abs_err_fwd_CP_3_5)
+sd(college_abs_err_fwd_CP_3_5)
+range(college_abs_err_fwd_CP_3_5)
+```
+```{r }
+
+#histogram and boxplot
+hist(college_abs_err_fwd_CP_3_5, breaks = 15)
+boxplot(college_abs_err_fwd_CP_3_5)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_fwd_CP_3_5, xlab = "Actual", ylab = "Prediction", main = "college_pred_fwd_CP_3_5")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, fwd_CP_5 = c(mean(college_abs_err_fwd_CP_3_5),
+                                                                  median(college_abs_err_fwd_CP_3_5),
+                                                                  sd(college_abs_err_fwd_CP_3_5),
+                                                                  IQR(college_abs_err_fwd_CP_3_5),
+                                                                  range(college_abs_err_fwd_CP_3_5)) )
+college_models_comp
+```
+```{r model3_6: test}
+#Model3_6: Test the Model-----
+college_pred_fwd_BIC_3_6  <- predict(college_fwd_BIC_3_6, college_test)
+
+college_pred_fwd_BIC_3_6  <- BCTransformInverse(college_pred_fwd_BIC_3_6, college_lambda)
+```
+```{r }
+#Model3_6: Absolute error mean, median, sd, max, min----
+college_abs_err_fwd_BIC_3_6 <- abs(college_pred_fwd_BIC_3_6 - college_test$Apps)
+mean(college_abs_err_fwd_BIC_3_6)
+median(college_abs_err_fwd_BIC_3_6)
+sd(college_abs_err_fwd_BIC_3_6)
+range(college_abs_err_fwd_BIC_3_6)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_fwd_BIC_3_6, breaks = 15)
+boxplot(college_abs_err_fwd_BIC_3_6)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_fwd_BIC_3_6, xlab = "Actual", ylab = "Prediction", main = "college_pred_fwd_BIC_3_6")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, fwd_BIC_6 = c(mean(college_abs_err_fwd_BIC_3_6),
+                                                               median(college_abs_err_fwd_BIC_3_6),
+                                                               sd(college_abs_err_fwd_BIC_3_6),
+                                                               IQR(college_abs_err_fwd_BIC_3_6),
+                                                               range(college_abs_err_fwd_BIC_3_6)) )
+college_models_comp
+```
+## Building model 3_7 to 3_9
+```{r model3_7}
+#Modle 3_7 & 3_8 & 3_9 Stepwise - Backward Method---------
+#backward Selection
+#Algorithm:
+# 1- Let Mp denote the full model , which contains all predictors. 
+# 2- For k = p, p - 1,..., 1:
+# (a) Consider all k models that contain all but one of the predictors
+#       in  Mk, for a total of k ??? 1 predictors.
+# (b) Pick the best among these models, and call it Mk-1.
+#       The best is defined as having the largest R-squared.
+#3- Select a single best model from among M0, ..., Mp
+#   using cross-validated prediction error, Cp, BIC, or adjusted R
+set.seed(1234)
+college_bwd_1 <- regsubsets(BoxCox_Apps ~ . - Apps, nvmax = 16, data = college_train, method = "backward")
+summary(college_bwd_1)
+```
+```{r model3_7 to 3_9}
+best_adjr2 = which.max(summary(college_bwd_1)$adjr2) #bwd adjr2 = 15
+best_cp = which.min(summary(college_bwd_1)$cp)    #bwd CP = 14
+best_bic = which.min(summary(college_bwd_1)$bic)   #bwd BIC = 9
+best_adjr2
+best_cp
+best_bic
+```
+```{r }
+
+coef(college_bwd_1, best_adjr2)
+coef(college_bwd_1, best_cp)
+coef(college_bwd_1, best_bic)
+
+```
+```{r }
+
+#Model3_7: bwd stepwise adjr2 = 15 ------
+coef(college_bwd_1, best_adjr2) #Model w/ 15 variables
+
+set.seed(1234)
+college_bwd_adjr2_3_7 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc  + Top25perc +
+                              P.Undergrad + Outstate + Room.Board + Books + Personal  + PhD
+                           +Terminal + S.F.Ratio  +  perc.alumni +
+                              Expend + Grad.Rate , data = college_train)
+```
+```{r }
+#Model3_8: bwd stepwise CP = 14------
+coef(college_bwd_1, best_cp) #Model w/ 14 variables
+
+set.seed(1234)
+college_bwd_CP_3_8 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc  + Top25perc +
+                              P.Undergrad  + Outstate + Room.Board + Books + Personal  + PhD
+                            + S.F.Ratio  +  perc.alumni +
+                              Expend + Grad.Rate , data = college_train)
+```
+```{r model3_9}
+#Model3_9: bwd stepwise BIC = 9 ------
+coef(college_bwd_1, best_bic) #Model w/ 9 variables
+
+set.seed(1234)
+college_bwd_BIC_3_9 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc  + Room.Board + Personal + PhD
+                            + S.F.Ratio   + perc.alumni +
+                              Expend  , data = college_train)
+```
+## Testing model 3_7 to 3_9
+```{r model3_7: test}
+#Model3_7: Test the Model-----
+college_pred_bwd_adjr2_3_7  <- predict(college_bwd_adjr2_3_7, college_test)
+college_pred_bwd_adjr2_3_7  <- BCTransformInverse(college_pred_bwd_adjr2_3_7, college_lambda)
+#Model3_7: Absolute error mean, median, sd, max, min----
+college_abs_err_bwd_adjr2_3_7 <- abs(college_pred_bwd_adjr2_3_7 - college_test$Apps)
+mean(college_abs_err_bwd_adjr2_3_7)
+median(college_abs_err_bwd_adjr2_3_7)
+sd(college_abs_err_bwd_adjr2_3_7)
+range(college_abs_err_bwd_adjr2_3_7)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_bwd_adjr2_3_7, breaks = 15)
+boxplot(college_abs_err_bwd_adjr2_3_7)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bwd_adjr2_3_7, xlab = "Actual", ylab = "Prediction", main = "college_pred_bwd_adjr2_3_7")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, bwd_adjr2_7 = c(mean(college_abs_err_bwd_adjr2_3_7),
+                                                                  median(college_abs_err_bwd_adjr2_3_7),
+                                                                  sd(college_abs_err_bwd_adjr2_3_7),
+                                                                  IQR(college_abs_err_bwd_adjr2_3_7),
+                                                                  range(college_abs_err_bwd_adjr2_3_7)) )
+college_models_comp
+```
+```{r model3_8: test}
+#Model3_8: Test the Model-----
+college_pred_bwd_CP_3_8  <- predict(college_bwd_CP_3_8, college_test)
+college_pred_bwd_CP_3_8  <- BCTransformInverse(college_pred_bwd_CP_3_8, college_lambda)
+#Model3_8: Absolute error mean, median, sd, max, min----
+college_abs_err_bwd_CP_3_8 <- abs(college_pred_bwd_CP_3_8 - college_test$Apps)
+mean(college_abs_err_bwd_CP_3_8)
+median(college_abs_err_bwd_CP_3_8)
+sd(college_abs_err_bwd_CP_3_8)
+range(college_abs_err_bwd_CP_3_8)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_bwd_CP_3_8, breaks = 15)
+boxplot(college_abs_err_bwd_CP_3_8)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bwd_CP_3_8, xlab = "Actual", ylab = "Prediction", main = "college_pred_bwd_CP_3_8")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, bwd_CP_8 = c(mean(college_abs_err_bwd_CP_3_8),
+                                                                  median(college_abs_err_bwd_CP_3_8),
+                                                                  sd(college_abs_err_bwd_CP_3_8),
+                                                                  IQR(college_abs_err_bwd_CP_3_8),
+                                                                  range(college_abs_err_bwd_CP_3_8)) )
+college_models_comp
+```
+```{r model3_9: test}
+#Model3_9: Test the Model-----
+college_pred_bwd_BIC_3_9  <- predict(college_bwd_BIC_3_9, college_test)
+college_pred_bwd_BIC_3_9  <- BCTransformInverse(college_pred_bwd_BIC_3_9, college_lambda)
+#Model3_9: Absolute error mean, median, sd, max, min----
+college_abs_err_bwd_BIC_3_9 <- abs(college_pred_bwd_BIC_3_9 - college_test$Apps)
+mean(college_abs_err_bwd_BIC_3_9)
+median(college_abs_err_bwd_BIC_3_9)
+sd(college_abs_err_bwd_BIC_3_9)
+range(college_abs_err_bwd_BIC_3_9)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_bwd_BIC_3_9, breaks = 15)
+boxplot(college_abs_err_bwd_BIC_3_9)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bwd_BIC_3_9, xlab = "Actual", ylab = "Prediction", main = "college_pred_bwd_BIC_3_9")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, bwd_BIC_9 = c(mean(college_abs_err_bwd_BIC_3_9),
+                                                                  median(college_abs_err_bwd_BIC_3_9),
+                                                                  sd(college_abs_err_bwd_BIC_3_9),
+                                                                  IQR(college_abs_err_bwd_BIC_3_9),
+                                                                  range(college_abs_err_bwd_BIC_3_9)) )
+college_models_comp
+```
+## Building model 4
+```{r model 4}
+##Model4: Using K-fold Cross-Validation Approach---------
+k <- 10
+set.seed(1234)
+college_folds <- sample(1:k, nrow(college_train), rep = TRUE)
+```
+```{r }
+
+college_cv_errors_4_1 <- matrix(NA, k, 16, dimnames = list(NULL , paste(1:16)))
+college_cv_errors_4_1
+```
+```{r }
+#Prediction function
+college_predict_regsubsets <- function(object #regression ourcome
+                                       , newdata #test data fold
+                                       , id) # number of variables for regression model in best subset in fold k in cv_errors matrix)
+                                       {
+  reg_formula <- as.formula(object$call[[2]]) # regression result$call[[2]] = regression formula
+  mat    <- model.matrix(reg_formula, newdata)
+  coef_i <- coef(object, id = id)
+  mat[, names(coef_i)] %*% coef_i
+}
+```
+## Model 4_1: model and test
+```{r Model 4_1}
+
+#Model4_1: K-fold Cross Validation exhaustive method---------------
+
+for(i in 1:k){
+  college_best_fit_4_1 <- regsubsets(BoxCox_Apps ~ . - Apps, data = college_train[college_folds != i,], nvmax = 16, method = "exhaustive")
+  for(j in 1:16){
+    college_pred_4_1 <- college_predict_regsubsets(college_best_fit_4_1, newdata = college_train[college_folds == i,], id = j)
+    college_cv_errors_4_1[i, j] <- mean((college_train$BoxCox_Apps[college_folds == i] - college_pred_4_1) ^ 2)
+  }
+}
+
+college_cv_errors_4_1
+```
+```{r }
+college_mean_cv_erros_4_1 <- apply(college_cv_errors_4_1, 2, mean)
+college_mean_cv_erros_4_1
+```
+```{r }
+plot(college_mean_cv_erros_4_1, type = "b")
+which.min(college_mean_cv_erros_4_1)
+```
+```{r }
+#Coefficients of the best model
+set.seed(1234)
+college_best_fit_4_1 <- regsubsets(BoxCox_Apps ~ . - Apps, data = college_train, nvmax = 16, method = "exhaustive")
+coef(college_best_fit_4_1, 16) #Model w/ 16 variables
+```
+```{r }
+set.seed(1234)
+college_bestsub_cv_exhaustive_4_1 <- lm(BoxCox_Apps ~ Accept +Enroll  + Top10perc + Top25perc +                                                F.Undergrad + P.Undergrad + Outstate  
+                             + Room.Board + Books + Personal + PhD + Terminal +
+                             S.F.Ratio  + Expend  + Grad.Rate, data = college_train)
+summary(college_bestsub_cv_exhaustive_4_1)
+```
+```{r }
+#Model4_1: Test the Model----------------------------------
+#Model: k_fold cross validation of bestsub exhaustive method
+#Prediction
+college_pred_cv_exhaustive_4_1 <- predict(college_bestsub_cv_exhaustive_4_1, college_test)
+college_pred_cv_exhaustive_4_1 <- BCTransformInverse(college_pred_cv_exhaustive_4_1, college_lambda)
+
+#Model4_1: Absolute error mean, median, sd, max, min-------
+college_abs_err_exhaustive_cv_4_1 <- abs(college_pred_cv_exhaustive_4_1 - college_test$Apps)
+mean(college_abs_err_exhaustive_cv_4_1)
+median(college_abs_err_exhaustive_cv_4_1)
+sd(college_abs_err_exhaustive_cv_4_1)
+range(college_abs_err_exhaustive_cv_4_1)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_exhaustive_cv_4_1, breaks = 15)
+boxplot(college_abs_err_exhaustive_cv_4_1)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_cv_exhaustive_4_1, xlab = "Actual", ylab = "Prediction", main = "college_pred_cv_exhaustive_4_1")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, CV_exhaustive_4_1 = c(mean(college_abs_err_exhaustive_cv_4_1),
+                                                                median(college_abs_err_exhaustive_cv_4_1),
+                                                                sd(college_abs_err_exhaustive_cv_4_1),
+                                                                IQR(college_abs_err_exhaustive_cv_4_1),
+                                                                range(college_abs_err_exhaustive_cv_4_1)) )
+college_models_comp
+```
+## Model 4_2: model and test
+```{r model 4_2}
+#Model4_2: K-fold Cross Validation backward method---------------
+k <- 10
+set.seed(1234)
+college_folds <- sample(1:k, nrow(college_train), rep = TRUE)
+
+```
+```{r }
+college_cv_errors_4_2 <- matrix(NA, k, 16, dimnames = list(NULL , paste(1:16)))
+college_cv_errors_4_2
+```
+```{r model4_2 backward}
+for(i in 1:k){
+  college_best_fit_4_2 <- regsubsets(BoxCox_Apps ~ . - Apps, data = college_train[college_folds != i,], nvmax = 16, method = "backward")
+  for(j in 1:16){
+    college_pred_4_2 <- college_predict_regsubsets(college_best_fit_4_2, newdata = college_train[college_folds == i,], id = j)
+    college_cv_errors_4_2[i, j] <- mean((college_train$BoxCox_Apps[college_folds == i] - college_pred_4_2) ^ 2)
+  }
+}
+
+college_cv_errors_4_2
+```
+```{r model4_2}
+college_mean_cv_erros_4_2 <- apply(college_cv_errors_4_2, 2, mean)
+college_mean_cv_erros_4_2
+```
+```{r }
+plot(college_mean_cv_erros_4_2, type = "b")
+which.min(college_mean_cv_erros_4_2) #16 variable
+```
+```{r }
+#Coefficients of the best model
+college_best_fit_4_2 <- regsubsets(BoxCox_Apps ~ . - Apps, data = college_train, nvmax = 16, method = "backward")
+coef(college_best_fit_4_2, 16) #Model w/ 15 variables
+
+```
+```{r }
+college_bestsub_cv_backward_4_2 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc + Top25perc + F.Undergrad + P.Undergrad
+                                        + Outstate + Room.Board + Books + Personal + PhD  + Terminal +
+                                          S.F.Ratio + perc.alumni + Expend + Grad.Rate, data = college_train)
+summary(college_bestsub_cv_backward_4_2)
+```
+```{r }
+#Model4_2: Test the Model----------------------------------
+#Model: k_fold cross validation of bestsub backward method
+#Prediction
+college_pred_cv_backward_4_2 <- predict(college_bestsub_cv_backward_4_2, college_test)
+college_pred_cv_backward_4_2 <- BCTransformInverse(college_pred_cv_backward_4_2, college_lambda)
+
+#Model4_2: Absolute error mean, median, sd, max, min-------
+college_abs_err_backward_cv_4_2 <- abs(college_pred_cv_backward_4_2 - college_test$Apps)
+mean(college_abs_err_backward_cv_4_2)
+median(college_abs_err_backward_cv_4_2)
+sd(college_abs_err_backward_cv_4_2)
+range(college_abs_err_backward_cv_4_2)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_backward_cv_4_2, breaks = 15)
+boxplot(college_abs_err_backward_cv_4_2)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_cv_backward_4_2, xlab = "Actual", ylab = "Prediction",main = "college_pred_cv_backward_4_2")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, CV_backward_4_2 = c(mean(college_abs_err_backward_cv_4_2),
+                                                                        median(college_abs_err_backward_cv_4_2),
+                                                                        sd(college_abs_err_backward_cv_4_2),
+                                                                        IQR(college_abs_err_exhaustive_cv_4_1),
+                                                                        range(college_abs_err_backward_cv_4_2)) )
+college_models_comp
+```
+## Model 4_3: model and test
+```{r model4_3}
+#Model4_3: K-fold Cross Validation forward method---------------
+k <- 10
+set.seed(1234)
+college_folds <- sample(1:k, nrow(college_train), rep = TRUE)
+college_folds
+```
+```{r }
+college_cv_errors_4_3 <- matrix(NA, k, 16, dimnames = list(NULL , paste(1:16)))
+college_cv_errors_4_3
+```
+```{r }
+for(i in 1:k){
+  college_best_fit_4_3 <- regsubsets(BoxCox_Apps ~ . - Apps, data = college_train[college_folds != i,], nvmax = 16, method = "forward")
+  for(j in 1:16){
+    college_pred_4_3 <- college_predict_regsubsets(college_best_fit_4_3, newdata = college_train[college_folds == i,], id = j)
+    college_cv_errors_4_3[i, j] <- mean((college_train$BoxCox_Apps[college_folds == i] - college_pred_4_3) ^ 2)
+  }
+}
+
+college_cv_errors_4_3
+```
+```{r }
+college_mean_cv_erros_4_3 <- apply(college_cv_errors_4_3, 2, mean)
+college_mean_cv_erros_4_3
+```
+```{r }
+plot(college_mean_cv_erros_4_3, type = "b")
+which.min(college_mean_cv_erros_4_3) #13 variable
+```
+```{r }
+#Coefficients of the best model
+set.seed(1234)
+college_best_fit_4_3 <- regsubsets(BoxCox_Apps ~ . - Apps, data = college_train, nvmax = 16, method = "forward")
+coef(college_best_fit_4_3, 16) #Model w/ 16 variables
+```
+```{r }
+college_bestsub_cv_forward_4_3 <- lm(BoxCox_Apps ~ Accept + Enroll + Top10perc + Top25perc  + F.Undergrad + P.Undergrad
+                                      + Outstate + Room.Board + Books + Personal  + PhD + Terminal +
+                                        S.F.Ratio + perc.alumni + Expend + Grad.Rate, data = college_train)
+summary(college_bestsub_cv_forward_4_3)
+```
+```{r }
+#Model4_3: Test the Model----------------------------------
+#Model: k_fold cross validation of bestsub forward method
+#Prediction
+college_pred_cv_forward_4_3 <- predict(college_bestsub_cv_forward_4_3, college_test)
+college_pred_cv_forward_4_3 <- BCTransformInverse(college_pred_cv_forward_4_3, college_lambda)
+
+#Model4_3: Absolute error mean, median, sd, max, min-------
+college_abs_err_forward_cv_4_3 <- abs(college_pred_cv_forward_4_3 - college_test$Apps)
+mean(college_abs_err_forward_cv_4_3)
+median(college_abs_err_forward_cv_4_3)
+sd(college_abs_err_forward_cv_4_3)
+range(college_abs_err_forward_cv_4_3)
+```
+```{r }
+#histogram and boxplot
+hist(college_abs_err_forward_cv_4_3, breaks = 15)
+boxplot(college_abs_err_forward_cv_4_3)
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_cv_forward_4_3, xlab = "Actual", ylab = "Prediction", main = "college_pred_cv_forward_4_3")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+```{r }
+college_models_comp <- rbind(college_models_comp, CV_forward_4_3 = c(mean(college_abs_err_forward_cv_4_3),
+                                                                      median(college_abs_err_forward_cv_4_3),
+                                                                      sd(college_abs_err_forward_cv_4_3),
+                                                                      IQR(college_abs_err_forward_cv_4_3),
+                                                                      range(college_abs_err_forward_cv_4_3)) )
+college_models_comp
+```
+
+
+
+##  model 5: model and test
+```{r model 5}
+#Model 5: Ridge Regression------------------------
+#Regularization
+#Ridge Regression:
+#The goal is to optimize:
+#   RSS + lambda * Sum( beta_i ^ 2)
+#   lambda => 0,  a tuning parameter
+#alpha = 0 ridge 
+#alph = 1 LASSO
+
+x <- model.matrix(BoxCox_Apps ~ + . - Apps, data = college_train)[, -1] #remove intercept
+y <- college_train$BoxCox_Apps
+```
+```{r model5}
+college_lambda_ridge_grid <- 10 ^ seq(10, -2, length = 100)
+college_lambda_ridge_grid
+```
+```{r }
+#Apply Ridge Regression
+college_ridgereg_1 <- glmnet(x, y, alpha = 0, lambda = college_lambda_ridge_grid) 
+dim(coef(college_ridgereg_1))
+```
+```{r }
+#Plot Reg. Coefficients vs. Log Lambda
+plot(college_ridgereg_1, xvar = "lambda")
+```
+
+```{r }
+#Cross validation to choose the best model
+
+college_ridge_cv    <- cv.glmnet(x, y, alpha = 0, nfolds = 10)
+```
+```{r }
+#The mean cross-validated error
+college_ridge_cv$cvm
+#Estimate of standard error of cvm.
+college_ridge_cv$cvsd
+
+#value of lambda that gives minimum cvm
+college_ridge_cv$lambda.min
+```
+```{r }
+#Coefficients of regression w/ best_lambda
+college_ridgereg_2 <- glmnet(x, y, alpha = 0, lambda = college_ridge_cv$lambda.min)
+coef(college_ridgereg_2)
+```
+
+```{r model 5: test}
+#Model 5: Test the Model----------------------------------
+#Model5: Ridge Regression
+#Prediction
+#Create model matrix for test
+college_test$BoxCox_Apps <- BCTransform(college_test$Apps)
+x_test <- model.matrix(BoxCox_Apps ~ + . - Apps, data = college_test)[, -1]#remove intercept
+```
+```{r }
+college_pred_ridgereg <- predict(college_ridgereg_2, s = college_ridge_cv$lambda.min, newx = x_test)
+
+college_pred_ridgereg <- BCTransformInverse(college_pred_ridgereg, lambda = college_lambda)
+
+#Model 5: Absolute error mean, median, sd, max, min-------
+college_abs_err_ridgereg <- abs(college_pred_ridgereg - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "RidgeReg" = c(mean(college_abs_err_ridgereg),
+                                                 median(college_abs_err_ridgereg),
+                                                 sd(college_abs_err_ridgereg),
+                                                 IQR(college_abs_err_ridgereg),
+                                                 range(college_abs_err_ridgereg)))
+college_models_comp
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_ridgereg, xlab = "Actual", ylab = "Prediction", main = "college_pred_ridgereg")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+
+##  model 6: model and test
+```{r model6}
+#Model 6: Lasso Regression------------------------
+#Regularization
+#Lasso Regression:
+#The goal is to optimize:
+#   RSS + lambda * Sum(abs(beta_i))
+#   lambda => 0,  a tuning parameter
+
+#Apply Lasso Regression
+college_lassoreg_1 <- glmnet(x, y, alpha = 1, lambda = college_lambda_ridge_grid)
+dim(coef(college_lassoreg_1))
+```
+```{r }
+#Plot Reg. Coefficients vs. Log Lambda
+plot(college_lassoreg_1, xvar = "lambda")
+```
+
+```{r }
+#Cross validation to choose the best model
+
+college_lasso_cv    <- cv.glmnet(x, y, alpha = 1, nfolds = 10)
+#The mean cross-validated error
+college_lasso_cv$cvm
+#Estimate of standard error of cvm.
+college_lasso_cv$cvsd
+
+#value of lambda that gives minimum cvm
+college_lasso_cv$lambda.min
+
+#Coefficients of regression w/ best_lambda
+college_lassoreg_2 <- glmnet(x, y, alpha = 1, lambda = college_lasso_cv$lambda.min)
+coef(college_lassoreg_2)
+```
+
+```{r model 6: test}
+
+#Model 6: Test the Model----------------------------------
+#Model 6: Lasso Regression
+#Prediction
+college_pred_lassoreg <- predict(college_lassoreg_2, s = college_lasso_cv$lambda.min, newx = x_test)
+college_pred_lassoreg <- BCTransformInverse(college_pred_lassoreg, lambda = college_lambda)
+
+#Absolute error mean, median, sd, max, min-------
+college_abs_err_lassoreg <- abs(college_pred_lassoreg - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "LassoReg" = c(mean(college_abs_err_lassoreg),
+                                                 median(college_abs_err_lassoreg),
+                                                 sd(college_abs_err_lassoreg),
+                                                 IQR(college_abs_err_lassoreg),
+                                                 range(college_abs_err_lassoreg)))
+college_models_comp
+```
+```{r }
+
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_lassoreg, xlab = "Actual", ylab = "Prediction", main = "college_pred_lassoreg")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+
+```
+##  model 7: model and test
+```{r model 7}
+#Model 7: Decision Trees-------------------------
+#Decision Tree Model Using All Variables
+set.seed(1234)
+college_tree_1 <- rpart(formula = BoxCox_Apps ~ . - Apps, data = college_train, cp = 0.0001, maxdepth = 20)
+
+#Plot the tree
+prp(college_tree_1)
+```
+```{r }
+#Prune the tree
+plotcp(college_tree_1)
+college_tree_1$cptable[which.min(college_tree_1$cptable[,"xerror"])]
+
+#Prune the tree
+college_tree_2 <- prune.rpart(college_tree_1, 
+                              cp = college_tree_1$cptable[which.min(college_tree_1$cptable[,"xerror"])])
+
+#Plot the pruned tree
+prp(college_tree_2)
+```
+```{r model 7:test}
+
+#Model 7: Test the Model----------------------------------
+
+#Prediction: M7 Tree
+college_pred_tree  <- predict(college_tree_2, college_test)
+college_pred_tree  <- BCTransformInverse(college_pred_tree, lambda = college_lambda)
+
+
+#Model 7: Absolute error mean, median, sd, max, min-------
+college_abs_err_tree <- abs(college_pred_tree - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "Tree" = c(mean(college_abs_err_tree),
+                                                             median(college_abs_err_tree),
+                                                             sd(college_abs_err_tree),
+                                                             IQR(college_abs_err_tree),
+                                                             range(college_abs_err_tree)))
+college_models_comp
+
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_tree, xlab = "Actual", ylab = "Prediction", main = "college_pred_tree")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+
+```
+##  model 8: model and test
+```{r model 8}
+#Model 8: Bagging--------------------------------
+set.seed(1234)
+college_bagging_1 <- randomForest(BoxCox_Apps ~ . - Apps, mtry = ncol(college_train) - 2, ntree = 500, data = college_train)
+college_bagging_1
+```
+
+```{r model 8:test}
+
+#Model 8: Test the Model----------------------------------
+#Prediction: M8 Bagging
+college_pred_bagging  <- predict(college_bagging_1, college_test)
+college_pred_bagging  <- BCTransformInverse(college_pred_bagging, lambda = college_lambda)
+
+#Model 8:Absolute error mean, median, sd, max, min-------
+college_abs_err_bagging <- abs(college_pred_bagging - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "Bagging" = c(mean(college_abs_err_bagging),
+                                                median(college_abs_err_bagging),
+                                                sd(college_abs_err_bagging),
+                                                IQR(college_abs_err_bagging),
+                                                range(college_abs_err_bagging)))
+college_models_comp
+```
+```{r model8}
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_bagging, xlab = "Actual", ylab = "Prediction", main = "college_pred_bagging")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+```
+##  model 9: model and test
+```{r model9}
+#Model 9: Random Forrest-------------------------
+set.seed(1234)
+college_rf_1 <- randomForest(BoxCox_Apps ~ . - Apps, data = college_train, ntree = 500, importance = TRUE)
+#mtry	
+#     for regression = p/3
+college_rf_1
+```
+```{r }
+importance(college_rf_1)
+varImpPlot(college_rf_1)
+#%IncMSE: is based upon the mean decrease of accuracy in predictions on the out of bag samples when a given variable is excluded from the model. 
+#IncNodePurity: is a measure of the total decrease in node impurity that results from splits over that variable, averaged over all trees. 
+#               The node impurity is measured by the training RSS.
+
+college_rf_cv <- rfcv(college_train[, - c(1, 18)], college_train$BoxCox_Apps, cv.fold = 10,
+              mtry = function(p) max(1, floor(sqrt(p))), recursive = FALSE)
+```
+```{r }
+
+#vector of number of variables used at each step
+college_rf_cv$n.var
+```
+``` {r }
+#Corresponding vector of MSEs at each step
+college_rf_cv$error.cv
+which.min(college_rf_cv$error.cv)
+
+```
+``` {r }
+set.seed(1234)
+college_rf_2 <- randomForest(BoxCox_Apps ~ . - Apps, data = college_train, mtry = 4, ntree = 500)
+#mtry	
+#     for regression = p/3
+college_rf_2
+```
+
+```{r model 9: test}
+
+#Model9: Test the Model----------------------------------
+#Prediction: M9 Random Forrest
+college_pred_rf  <- predict(college_rf_2, college_test)
+college_pred_rf  <- BCTransformInverse(college_pred_rf, lambda = college_lambda)
+
+
+#Model 9: Absolute error mean, median, sd, max, min-------
+college_abs_err_rf <- abs(college_pred_rf - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "RandomForrest" = c(mean(college_abs_err_rf),
+                                                      median(college_abs_err_rf),
+                                                      sd(college_abs_err_rf),
+                                                      IQR(college_abs_err_rf),
+                                                      range(college_abs_err_rf)))
+college_models_comp
+```
+```{r }
+
+#Actual vs. Predicted
+plot(college_test$Apps, college_pred_rf, xlab = "Actual", ylab = "Prediction", main = "college_pred_rf")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+
+```
+##  models with trimmed data 10
+
+Previous models with trimmed data did not have good results in test dataset so no more model with trimmed data.
+##  model 10: model and test
+```{r model 10}
+#Model 10: GB Regression-------------------------
+
+#train GBM model
+gbm_1 <- gbm(formula = BoxCox_Apps ~ + . - Apps,
+             distribution = "gaussian",
+             data = college_train,
+             n.trees = 30000, #the total number of trees to fit
+             interaction.depth = 1, #1: stump, the maximum depth of each tree 
+             shrinkage = 0.001, #learning rate
+             cv.folds = 5, #Number of cross-validation folds to perform
+             n.cores = NULL, #will use all cores by default
+             verbose = FALSE)  
+```
+```{r }
+
+#get MSE and compute RMSE
+min(gbm_1$cv.error)         #MSE
+sqrt(min(gbm_1$cv.error))   #RMSE
+```
+```{r }
+#plot loss function as a result of n trees added to the ensemble
+gbm.perf(gbm_1, method = "cv")
+#returns the estimated optimal number of iterations
+
+#Use different parameters
+```
+```{r }
+gbm_2 <- gbm(formula = BoxCox_Apps ~ + . - Apps,
+             distribution = "gaussian",
+             data = college_train,
+             n.trees = 30000,
+             interaction.depth = 3,
+             shrinkage = 0.01,
+             cv.folds = 5,
+             n.cores = NULL, #will use all cores by default
+             verbose = FALSE)  
+
+#get MSE and compute RMSE
+sqrt(min(gbm_2$cv.error))
+```
+```{r }
+#plot loss function as a result of n trees added to the ensemble
+gbm.perf(gbm_2, method = "cv")
+```
+```{r }
+#Tuning
+#Create hyper-parameter grid
+par_grid <- expand.grid(shrinkage = c(0.01, 0.1, 0.3),
+                        interaction_depth = c(1, 3, 5), #the maximum depth of each tree
+                        n_minobsinnode = c(5, 10, 15),  #the minimum number of observations in the terminal nodes of the trees
+                        bag_fraction = c(0.5, 0.7, 0.9)  #stochastic gradient :bag.fraction < 1
+)
+par_grid
+nrow(par_grid)
+```
+```{r }
+#Grid search (train/validation approach)
+for(i in 1:nrow(par_grid)) {
+  #train model
+  set.seed(1234)
+  gbm_tune <- gbm(formula = BoxCox_Apps ~ + . - Apps,
+                  distribution = "gaussian",
+                  data = college_train,
+                  n.trees = 30000,
+                  interaction.depth = par_grid$interaction_depth[i],
+                  shrinkage = par_grid$shrinkage[i],
+                  n.minobsinnode = par_grid$n_minobsinnode[i],
+                  bag.fraction = par_grid$bag_fraction[i],
+                  train.fraction = 0.8,
+                  cv.folds = 0,
+                  n.cores = NULL, #will use all cores by default
+                  verbose = FALSE)  
+  #add min training error and trees to grid
+  par_grid$optimal_trees[i] <- which.min(gbm_tune$valid.error)
+  par_grid$min_RMSE[i]      <- sqrt(min(gbm_tune$valid.error))
+}
+```
+
+```{r }
+head(par_grid)
+par_grid1 <- par_grid[order(par_grid$min_RMSE),]
+par_grid
+par_grid1
+
+```
+```{r }
+#Modify hyper-parameter grid
+par_grid <- expand.grid(shrinkage = c(0.1, 0.2, 0.3),
+                        interaction_depth = c(1, 2, 3),
+                        n_minobsinnode = c(5, 6, 7),
+                        bag_fraction = c(0.5, 0.7, 0.9)  #stochastic gradient :bag.fraction < 1
+)
+```
+```{r }
+#Grid search 
+for(i in 1:nrow(par_grid)) {
+
+  #train model
+  set.seed(1234)
+  gbm_tune <- gbm(formula = BoxCox_Apps ~ + . - Apps,
+                  distribution = "gaussian",
+                  data = college_train,
+                  n.trees = 30000,
+                  interaction.depth = par_grid$interaction_depth[i],
+                  shrinkage = par_grid$shrinkage[i],
+                  n.minobsinnode = par_grid$n_minobsinnode[i],
+                  bag.fraction = par_grid$bag_fraction[i],
+                  train.fraction = 0.8,
+                  cv.folds = 0,
+                  n.cores = NULL, #will use all cores by default
+                  verbose = FALSE)  
+  #add min training error and trees to grid
+  par_grid$optimal_trees[i] <- which.min(gbm_tune$valid.error)
+  par_grid$min_RMSE[i]    <- sqrt(min(gbm_tune$valid.error))
+}
+#it took 16 minutes for the code to be run
+```
+```{r }
+head(par_grid)
+par_grid1 <- par_grid[order(par_grid$min_RMSE),]
+par_grid
+par_grid1
+```
+```{r }
+
+
+
+#Final Model
+set.seed(1234)
+gbm_3 <- gbm(formula = BoxCox_Apps ~ + . - Apps,
+             distribution = "gaussian",
+             data = college_train,
+             n.trees = 32000,
+             interaction.depth = 5,
+             shrinkage = 0.3,
+             n.minobsinnode = 7,
+             bag.fraction = 0.5,
+             train.fraction = 0.8,
+             cv.folds = 0,
+             n.cores = NULL, #will use all cores by default
+)  
+```
+```{r }
+summary(gbm_3)
+#Relative Importance: 
+#   The variables with the largest average decrease in MSE are considered most important.
+```
+```{r model 10:test}
+#Model 10: Test the Model----------------------------------
+#Model 10: gbm_3
+#Prediction
+pred_gbm <- predict(gbm_3, n.trees = 32000, newdata = college_test)
+pred_gbm <- BCTransformInverse(pred_gbm, lambda = college_lambda)
+
+#Model 10: Absolute error mean, median, sd, max, min-------
+abs_err_gbm <- abs(pred_gbm - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "GBReg" = c(mean(abs_err_gbm),
+                                              median(abs_err_gbm),
+                                              sd(abs_err_gbm),
+                                              IQR(abs_err_gbm),
+                                              range(abs_err_gbm)))
+college_models_comp
+
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, pred_gbm, xlab = "Actual", ylab = "Prediction", main = "pred_gbm")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+
+```
+##  model 11: model and test
+```{r model 11}
+#Model 11: XGBoost Regression------------------------
+x <- model.matrix(BoxCox_Apps ~ + . - Apps, data = college_train)[, -1] #remove intercept
+y <- college_train$BoxCox_Apps
+```
+```{r model11}
+set.seed(1234)
+xgb_1 <- xgboost(data = x, 
+                 label = y,
+                 eta = 0.1,                       #learning rate
+                 lambda = 0,                      #regularization term
+                 max_depth = 8,                   #tree depth 
+                 nround = 1000,                   #max number of boosting iterations
+                 subsample = 0.65,                #percent of training data to sample for each tree
+                 objective = "reg:squarederror",  #for regression models
+                 verbose = 0                      #silent
+) 
+```
+```{r }
+#train RMSE
+xgb_1$evaluation_log
+```
+```{r }
+#plot error vs number trees
+ggplot(xgb_1$evaluation_log) +
+  geom_line(aes(iter, train_rmse), color = "red") 
+
+#Tuning(Train/validation using xgboost)
+#Train and validation sets
+```
+```{r }
+set.seed(1234)
+train_cases <- sample(1:nrow(college_train), nrow(college_train) * 0.8)
+#Train data set
+train_xgboost <- college_train[train_cases,]
+dim(train_xgboost)
+```
+```{r }
+#Model Matrix
+xtrain <- model.matrix(BoxCox_Apps ~ + . - Apps, data = train_xgboost)[, -1] #remove intercept
+ytrain <- train_xgboost$BoxCox_Apps
+```
+```{r }
+#Validation data set
+validation_xgboost  <- college_train[- train_cases,]
+dim(validation_xgboost)
+xvalidation <- model.matrix(BoxCox_Apps ~ + . - Apps, data = validation_xgboost)[, -1] #remove intercept
+yvalidation <- validation_xgboost$BoxCox_Apps
+```
+```{r }
+#Create hyper-parameter grid
+par_grid <- expand.grid(eta = c(0.01, 0.05, 0.1, 0.3),
+                        lambda = c(0, 1, 2, 5),
+                        max_depth = c(1, 3, 5, 7),
+                        subsample = c(0.65, 0.8, 1), 
+                        colsample_bytree = c(0.8, 0.9, 1))
+
+dim(par_grid)
+```
+```{r }
+#Grid search 
+for(i in 1:nrow(par_grid )) {
+  
+  #train model
+  set.seed(1234)
+  xgb_tune <- xgboost(data =  xtrain,
+                      label = ytrain,
+                      eta = par_grid$eta[i],
+                      max_depth = par_grid$max_depth[i],
+                      subsample = par_grid$subsample[i],
+                      colsample_bytree = par_grid$colsample_bytree[i],
+                      nrounds = 1000,
+                      objective = "reg:squarederror",  #for regression models
+                      verbose = 0,                     #silent,
+                      early_stopping_rounds = 10       #stop if no improvement for 10 consecutive trees
+  )
+  
+  #prediction on validation data set
+  pred_xgb_validation <- predict(xgb_tune, xvalidation)
+  rmse <- sqrt(mean((yvalidation - pred_xgb_validation) ^ 2))
+  
+  #add validation error
+  par_grid$RMSE[i]  <- rmse
+}
+#17 min to run the code
+
+```
+```{r }
+par_grid
+
+
+par_grid1 <- par_grid[order(par_grid$RMSE),]
+par_grid1
+```
+```{r }
+#Final Model
+set.seed(1234)
+xgb_2 <- xgboost(data = x, 
+                 label = y,
+                 eta = 0.1,     #learning rate
+                 max_depth = 7,  #tree depth 
+                 lambda = 0,
+                 nround = 1000,
+                 colsample_bytree = 1,
+                 subsample = 0.65,                 #percent of training data to sample for each tree
+                 objective = "reg:squarederror",  #for regression models
+                 verbose = 0                      #silent
+)
+```
+
+```{r model 11: test}
+#Model 11: Test the Model----------------------------------
+#Model: xgb_2
+x_test <- model.matrix(BoxCox_Apps ~ + . - Apps, data = college_test)[, -1]#remove intercept
+pred_xgb <- predict(xgb_2, x_test)
+pred_xgb <- BCTransformInverse(pred_xgb, lambda = college_lambda)
+
+#Model 11: Absolute error mean, median, sd, max, min-------
+abs_err_xgb <- abs(pred_xgb - college_test$Apps)
+college_models_comp <- rbind(college_models_comp, "XGBReg" = c(mean(abs_err_xgb),
+                                               median(abs_err_xgb),
+                                               sd(abs_err_xgb),
+                                               IQR(abs_err_xgb),
+                                               range(abs_err_xgb)))
+college_models_comp
+```
+```{r }
+#Actual vs. Predicted
+plot(college_test$Apps, pred_xgb, xlab = "Actual", ylab = "Prediction", main = "pred_xgb")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+
+```
+```{r final comparison table}
+college_models_comp
+```
+
+# Part5: Conclusion
+As the college_models_comp table shows, model Bagging  has  the best result among all other models. Since the mean of abs are the lowest. However, the the SD  of abs errors were better in classic regression models(lm_1 and lm_2). The median of errors in Bagging model had  the best result as well. GBReg got better result in Max of abs errors.
+
+## what did this project teach me? and what challenges I faced?
+It  was a good opportunity to practice different skill sets including:
+Coding skills and practicing what has been taught in class.
+Time and project management skills.
+Gaining more confidence in stepping into the data science world.
+Presenting skills(it is not perfect, I know, but at least I got the chance to practice it!)
+Some times coding problems took too much time and was challenging to overcome  due to lack of experience in using R. Other than that there were not much challenge along the way, the class files were very helpful in terms of doing the project. As well, judging the results and making conclusions were another hard part of the process. 
+
+## final words
+I hope I could have satisfied your expectations as your student. Thanks for teaching us too many great things.
+And by the way, I apologize if the English was not perfect.
+
+# The End
